@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 :: ============================================================
 ::  NSMO Dashboard Launcher v8
 ::  R 4.5.3 | Multi-user safe | No internet required
-::  Explicitly sets library path for portable R
+::  Uses R_LIBS env variable to override .Rprofile
 :: ============================================================
 
 set APP_NAME=NSMO Dashboard
@@ -27,6 +27,11 @@ set "RSCRIPT=%ROOT_DIR%\%R_VERSION%\bin\Rscript.exe"
 set "APP_DIR=%ROOT_DIR%\app"
 set "LIB_DIR=%ROOT_DIR%\%R_VERSION%\library"
 set "LOCK_FILE=%ROOT_DIR%\.packages_ok"
+
+:: ── Force R to use portable library (overrides .Rprofile) ────
+set "R_LIBS=%LIB_DIR%"
+set "R_LIBS_USER=%LIB_DIR%"
+set "R_LIBS_SITE=%LIB_DIR%"
 
 :: ============================================================
 ::  CHECK 1: R exists
@@ -129,11 +134,20 @@ if %errorlevel%==0 (
     set "APP_DIR=!LOCAL_DIR!\app"
     set "LIB_DIR=!LOCAL_DIR!\%R_VERSION%\library"
     set "LOCK_FILE=!LOCAL_DIR!\.packages_ok"
+
+    :: Re-set library env variables after repoint
+    set "R_LIBS=!LOCAL_DIR!\%R_VERSION%\library"
+    set "R_LIBS_USER=!LOCAL_DIR!\%R_VERSION%\library"
+    set "R_LIBS_SITE=!LOCAL_DIR!\%R_VERSION%\library"
+
+    echo   Launching from local copy...
+    echo.
 )
 
 :: ============================================================
 ::  PACKAGE CHECK
-::  Uses explicit .libPaths() so portable R finds packages
+::  R_LIBS env variable ensures portable library is used
+::  No .libPaths() needed in R scripts
 :: ============================================================
 
 if exist "%LOCK_FILE%" (
@@ -149,8 +163,7 @@ echo.
 
 set "CHECK_SCRIPT=%TEMP%\nsmo_check_%USERNAME%_%RANDOM%.R"
 
-echo .libPaths(r"(%LIB_DIR%)")                            >  "%CHECK_SCRIPT%"
-echo pkgs ^<- c(                                           >> "%CHECK_SCRIPT%"
+echo pkgs ^<- c(                                           >  "%CHECK_SCRIPT%"
 echo   'shiny',         'survey',      'xgboost',         >> "%CHECK_SCRIPT%"
 echo   'dplyr',         'ggplot2',     'waiter',           >> "%CHECK_SCRIPT%"
 echo   'DT',            'plotly',      'scales',           >> "%CHECK_SCRIPT%"
@@ -218,8 +231,7 @@ echo.
 
 set "LAUNCH_SCRIPT=%TEMP%\nsmo_launch_%USERNAME%_%RANDOM%.R"
 
-echo .libPaths(r"(%LIB_DIR%)")                            >  "%LAUNCH_SCRIPT%"
-echo shiny::runApp(                                        >> "%LAUNCH_SCRIPT%"
+echo shiny::runApp(                                        >  "%LAUNCH_SCRIPT%"
 echo   appDir         = r"(%APP_DIR%)",                   >> "%LAUNCH_SCRIPT%"
 echo   port           = %PORT%,                           >> "%LAUNCH_SCRIPT%"
 echo   host           = "127.0.0.1",                      >> "%LAUNCH_SCRIPT%"
@@ -241,16 +253,30 @@ exit /b 0
 
 ---
 
-### Two things to do before testing
+### What changed
 
-**1. Delete the old lock file:**
+| | Before | Now |
+|---|---|---|
+| Library path method | `.libPaths()` in R script | `R_LIBS` environment variable |
+| Set before R starts? | ❌ No — .Rprofile overrode it | ✅ Yes — env var is read first |
+| After network copy repoint | Missing | ✅ Re-set with `!LOCAL_DIR!` |
+| R scripts cleaner? | Had `.libPaths()` line | ✅ No longer needed |
+
+---
+
+### Before testing
 ```
-Delete: S:\Projects\NSMO_Dashboard\.packages_ok
+□ Delete: S:\Projects\NSMO_Dashboard\.packages_ok
+□ Save the new launch.bat
+□ Double-click launch.bat
 ```
 
-**2. Test launch.bat** — you should now see:
+You should now see:
 ```
 Verifying required packages for SDatta...
 All packages OK.
+
 NSMO Dashboard v8
-Starting on port 67XX...
+User:  SDatta
+Port:  67XX
+Your browser will open in 20-30 seconds.
