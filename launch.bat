@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 :: ============================================================
 ::  NSMO Dashboard Launcher v8
 ::  R 4.5.3 | Multi-user safe | No internet required
-::  20 users on separate machines supported
+::  Explicitly sets library path for portable R
 :: ============================================================
 
 set APP_NAME=NSMO Dashboard
@@ -82,8 +82,7 @@ if not exist "%LIB_DIR%" (
     echo   Expected location:
     echo     %LIB_DIR%
     echo.
-    echo   Contact Saurabh Datta for a fresh copy with
-    echo   all packages pre-installed.
+    echo   Contact Saurabh Datta for a fresh copy.
     echo ============================================================
     pause
     exit /b 1
@@ -91,7 +90,6 @@ if not exist "%LIB_DIR%" (
 
 :: ============================================================
 ::  AUTO-COPY FROM NETWORK DRIVE (per user, fully isolated)
-::  Each user gets their own local copy named with their username
 :: ============================================================
 
 echo %ROOT_DIR% | findstr /i "^[S-Z]:\\" >nul 2>&1
@@ -113,15 +111,12 @@ if %errorlevel%==0 (
             echo.
             echo ============================================================
             echo   ERROR: Could not copy files to Desktop.
-            echo ============================================================
-            echo.
-            echo   Please manually copy the NSMO_Dashboard folder
-            echo   to your Desktop and run launch.bat from there.
+            echo   Please manually copy NSMO_Dashboard to your Desktop.
             echo ============================================================
             pause
             exit /b 1
         )
-        echo   Done. Your personal copy is ready on your Desktop.
+        echo   Done. Your personal copy is ready.
         echo.
     ) else (
         echo   Your local copy already exists. Using it.
@@ -138,7 +133,7 @@ if %errorlevel%==0 (
 
 :: ============================================================
 ::  PACKAGE CHECK
-::  Runs once per user, writes personal lock file
+::  Uses explicit .libPaths() so portable R finds packages
 :: ============================================================
 
 if exist "%LOCK_FILE%" (
@@ -154,7 +149,8 @@ echo.
 
 set "CHECK_SCRIPT=%TEMP%\nsmo_check_%USERNAME%_%RANDOM%.R"
 
-echo pkgs ^<- c(                                           >  "%CHECK_SCRIPT%"
+echo .libPaths(r"(%LIB_DIR%)")                            >  "%CHECK_SCRIPT%"
+echo pkgs ^<- c(                                           >> "%CHECK_SCRIPT%"
 echo   'shiny',         'survey',      'xgboost',         >> "%CHECK_SCRIPT%"
 echo   'dplyr',         'ggplot2',     'waiter',           >> "%CHECK_SCRIPT%"
 echo   'DT',            'plotly',      'scales',           >> "%CHECK_SCRIPT%"
@@ -162,10 +158,8 @@ echo   'tidyr',         'stringr',     'forcats',          >> "%CHECK_SCRIPT%"
 echo   'purrr',         'bslib',       'shinyWidgets',     >> "%CHECK_SCRIPT%"
 echo   'shinydashboard','htmltools',   'jsonlite'          >> "%CHECK_SCRIPT%"
 echo )                                                     >> "%CHECK_SCRIPT%"
-echo.                                                      >> "%CHECK_SCRIPT%"
 echo missing ^<- pkgs[!sapply(pkgs, requireNamespace,      >> "%CHECK_SCRIPT%"
 echo                  quietly = TRUE)]                     >> "%CHECK_SCRIPT%"
-echo.                                                      >> "%CHECK_SCRIPT%"
 echo if (length(missing) ^> 0) {                           >> "%CHECK_SCRIPT%"
 echo   cat("\nMISSING PACKAGES:\n")                       >> "%CHECK_SCRIPT%"
 echo   cat(paste(" -", missing, collapse="\n"), "\n")     >> "%CHECK_SCRIPT%"
@@ -183,8 +177,6 @@ if %CHECK_STATUS% neq 0 (
     echo.
     echo ============================================================
     echo   ERROR: Missing packages detected.
-    echo ============================================================
-    echo.
     echo   Contact Saurabh Datta for a fresh copy of
     echo   NSMO_Dashboard with all packages pre-installed.
     echo ============================================================
@@ -226,12 +218,13 @@ echo.
 
 set "LAUNCH_SCRIPT=%TEMP%\nsmo_launch_%USERNAME%_%RANDOM%.R"
 
-echo shiny::runApp(                         >  "%LAUNCH_SCRIPT%"
-echo   appDir         = r"(%APP_DIR%)",     >> "%LAUNCH_SCRIPT%"
-echo   port           = %PORT%,             >> "%LAUNCH_SCRIPT%"
-echo   host           = "127.0.0.1",        >> "%LAUNCH_SCRIPT%"
-echo   launch.browser = TRUE                >> "%LAUNCH_SCRIPT%"
-echo )                                      >> "%LAUNCH_SCRIPT%"
+echo .libPaths(r"(%LIB_DIR%)")                            >  "%LAUNCH_SCRIPT%"
+echo shiny::runApp(                                        >> "%LAUNCH_SCRIPT%"
+echo   appDir         = r"(%APP_DIR%)",                   >> "%LAUNCH_SCRIPT%"
+echo   port           = %PORT%,                           >> "%LAUNCH_SCRIPT%"
+echo   host           = "127.0.0.1",                      >> "%LAUNCH_SCRIPT%"
+echo   launch.browser = TRUE                              >> "%LAUNCH_SCRIPT%"
+echo )                                                    >> "%LAUNCH_SCRIPT%"
 
 "%RSCRIPT%" "%LAUNCH_SCRIPT%"
 
@@ -244,3 +237,20 @@ echo   Dashboard stopped. Press any key to close.
 echo ============================================================
 pause >nul
 exit /b 0
+```
+
+---
+
+### Two things to do before testing
+
+**1. Delete the old lock file:**
+```
+Delete: S:\Projects\NSMO_Dashboard\.packages_ok
+```
+
+**2. Test launch.bat** — you should now see:
+```
+Verifying required packages for SDatta...
+All packages OK.
+NSMO Dashboard v8
+Starting on port 67XX...
