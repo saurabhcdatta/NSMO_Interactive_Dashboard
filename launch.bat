@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: ============================================================
-::  NSMO Dashboard Launcher v8 — Final
+::  NSMO Dashboard Launcher v8 — Final with Timer
 :: ============================================================
 
 set APP_NAME=NSMO Dashboard
@@ -22,13 +22,21 @@ set "R_PROFILE_USER=NUL"
 
 :: ── Basic checks ─────────────────────────────────────────────
 if not exist "%RSCRIPT%" (
-    echo ERROR: R not found. Contact Saurabh Datta.
+    echo.
+    echo ============================================================
+    echo   ERROR: R not found.
+    echo   Contact Saurabh Datta for a fresh copy.
+    echo ============================================================
     pause
     exit /b 1
 )
 
 if not exist "%APP_DIR%" (
-    echo ERROR: App folder not found. Contact Saurabh Datta.
+    echo.
+    echo ============================================================
+    echo   ERROR: App folder not found.
+    echo   Contact Saurabh Datta for a fresh copy.
+    echo ============================================================
     pause
     exit /b 1
 )
@@ -37,14 +45,14 @@ if not exist "%APP_DIR%" (
 netstat -ano | findstr ":%PORT% " >nul 2>&1
 if %errorlevel%==0 (
     set /a PORT=%PORT%+1
-    echo Port busy. Switching to !PORT!...
+    echo   Port busy. Switching to !PORT!...
 )
 
 :: ── Convert backslashes to forward slashes for R ─────────────
 set "LIB_DIR_R=%LIB_DIR:\=/%"
 set "APP_DIR_R=%APP_DIR:\=/%"
 
-:: ── Launch ───────────────────────────────────────────────────
+:: ── Header ───────────────────────────────────────────────────
 echo.
 echo ============================================================
 echo   %APP_NAME% v8
@@ -54,11 +62,12 @@ echo   User :  %USERNAME%
 echo   Port :  %PORT%
 echo   From :  %ROOT_DIR%
 echo.
-echo   Browser opens in 20-30 seconds.
+echo   Loading dashboard. Please wait...
 echo   DO NOT close this window while using the dashboard.
 echo ============================================================
 echo.
 
+:: ── Write launch script ──────────────────────────────────────
 set "LAUNCH_SCRIPT=%TEMP%\nsmo_%USERNAME%_%RANDOM%.R"
 
 (
@@ -71,13 +80,69 @@ set "LAUNCH_SCRIPT=%TEMP%\nsmo_%USERNAME%_%RANDOM%.R"
     echo ^)
 ) > "%LAUNCH_SCRIPT%"
 
-"%RSCRIPT%" "%LAUNCH_SCRIPT%"
+:: ── Launch R in background ───────────────────────────────────
+start /b "" "%RSCRIPT%" "%LAUNCH_SCRIPT%"
 
+:: ── Timer loop ───────────────────────────────────────────────
+set SECONDS=0
+
+:TIMER_LOOP
+timeout /t 1 /nobreak >nul
+set /a SECONDS+=1
+set /a MINS=SECONDS/60
+set /a SECS=SECONDS%%60
+
+:: Format with leading zero
+set "SECS_FMT=0%SECS%"
+set "SECS_FMT=!SECS_FMT:~-2!"
+
+:: Check if app is listening
+netstat -ano | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
+if %errorlevel%==0 goto :READY
+
+:: Update timer on same line
+<nul set /p "=  Loading... %MINS%m !SECS_FMT!s&#13;"
+
+:: Timeout safety after 5 minutes
+if %SECONDS% LSS 300 goto :TIMER_LOOP
+
+:: ── Timeout warning ──────────────────────────────────────────
+echo.
+echo ============================================================
+echo   WARNING: Taking longer than 5 minutes.
+echo   Try opening manually: http://127.0.0.1:%PORT%
+echo ============================================================
+goto :WAIT_FOR_EXIT
+
+:: ── Ready ────────────────────────────────────────────────────
+:READY
+echo.
+echo.
+echo ============================================================
+echo   Dashboard ready in %MINS%m !SECS_FMT!s ^<-- load time
+echo ============================================================
+echo.
+echo   Opening browser now...
+echo   http://127.0.0.1:%PORT%
+echo.
+echo   Keep this window open while using the dashboard.
+echo ============================================================
+
+:: Open browser
+start http://127.0.0.1:%PORT%
+
+:: ── Wait for user to close ───────────────────────────────────
+:WAIT_FOR_EXIT
+echo.
+echo   Press any key to stop the dashboard and close.
+pause >nul
+
+:: ── Cleanup ──────────────────────────────────────────────────
 if exist "%LAUNCH_SCRIPT%" del "%LAUNCH_SCRIPT%"
 
 echo.
 echo ============================================================
-echo   Dashboard stopped. Press any key to close.
+echo   Dashboard stopped. Goodbye!
 echo ============================================================
-pause >nul
+timeout /t 2 /nobreak >nul
 exit /b 0
