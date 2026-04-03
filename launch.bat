@@ -62,7 +62,8 @@ echo   User :  %USERNAME%
 echo   Port :  %PORT%
 echo   From :  %ROOT_DIR%
 echo.
-echo   Loading dashboard. Please wait...
+echo   Loading dashboard. This takes 1-3 minutes.
+echo   Watch the timer below. Browser opens automatically.
 echo   DO NOT close this window while using the dashboard.
 echo ============================================================
 echo.
@@ -92,18 +93,18 @@ set /a SECONDS+=1
 set /a MINS=SECONDS/60
 set /a SECS=SECONDS%%60
 
-:: Format with leading zero
+:: Format seconds with leading zero
 set "SECS_FMT=0%SECS%"
 set "SECS_FMT=!SECS_FMT:~-2!"
 
-:: Check if app is listening
+:: Check if app is listening yet
 netstat -ano | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
 if %errorlevel%==0 goto :READY
 
-:: Update timer on same line
-<nul set /p "=  Loading... %MINS%m !SECS_FMT!s&#13;"
+:: Print timer — one line per second
+echo   Loading... %MINS%m !SECS_FMT!s
 
-:: Timeout safety after 5 minutes
+:: Safety timeout after 5 minutes
 if %SECONDS% LSS 300 goto :TIMER_LOOP
 
 :: ── Timeout warning ──────────────────────────────────────────
@@ -111,30 +112,27 @@ echo.
 echo ============================================================
 echo   WARNING: Taking longer than 5 minutes.
 echo   Try opening manually: http://127.0.0.1:%PORT%
+echo   Or contact Saurabh Datta.
 echo ============================================================
 goto :WAIT_FOR_EXIT
 
 :: ── Ready ────────────────────────────────────────────────────
 :READY
 echo.
-echo.
 echo ============================================================
-echo   Dashboard ready in %MINS%m !SECS_FMT!s ^<-- load time
-echo ============================================================
-echo.
+echo   Dashboard ready in %MINS%m !SECS_FMT!s
 echo   Opening browser now...
 echo   http://127.0.0.1:%PORT%
+echo ============================================================
 echo.
 echo   Keep this window open while using the dashboard.
+echo   Press any key to stop the dashboard and close.
 echo ============================================================
 
-:: Open browser
 start http://127.0.0.1:%PORT%
 
 :: ── Wait for user to close ───────────────────────────────────
 :WAIT_FOR_EXIT
-echo.
-echo   Press any key to stop the dashboard and close.
 pause >nul
 
 :: ── Cleanup ──────────────────────────────────────────────────
