@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: ============================================================
-::  NSMO Dashboard Launcher v8 — Final with Timer
+::  NSMO Dashboard Launcher v8 — Final
 :: ============================================================
 
 set APP_NAME=NSMO Dashboard
@@ -60,10 +60,9 @@ echo ============================================================
 echo.
 echo   User :  %USERNAME%
 echo   Port :  %PORT%
-echo   From :  %ROOT_DIR%
 echo.
-echo   Loading dashboard. This takes 1-3 minutes.
-echo   Watch the timer below. Browser opens automatically.
+echo   Please wait while the dashboard loads.
+echo   Your browser will open automatically when ready.
 echo   DO NOT close this window while using the dashboard.
 echo ============================================================
 echo.
@@ -93,43 +92,33 @@ set /a SECONDS+=1
 set /a MINS=SECONDS/60
 set /a SECS=SECONDS%%60
 
-:: Format seconds with leading zero
 set "SECS_FMT=0%SECS%"
 set "SECS_FMT=!SECS_FMT:~-2!"
 
-:: Check if app is listening yet
+:: Check if app is ready
 netstat -ano | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
 if %errorlevel%==0 goto :READY
 
-:: Print timer — one line per second
-echo   Loading... %MINS%m !SECS_FMT!s
+:: Show spinner with timer
+set /a SPIN=SECONDS%%4
+if !SPIN!==0 echo   ^| Browser loading... %MINS%m !SECS_FMT!s
+if !SPIN!==1 echo   / Browser loading... %MINS%m !SECS_FMT!s
+if !SPIN!==2 echo   - Browser loading... %MINS%m !SECS_FMT!s
+if !SPIN!==3 echo   \ Browser loading... %MINS%m !SECS_FMT!s
 
-:: Safety timeout after 5 minutes
-if %SECONDS% LSS 300 goto :TIMER_LOOP
-
-:: ── Timeout warning ──────────────────────────────────────────
-echo.
-echo ============================================================
-echo   WARNING: Taking longer than 5 minutes.
-echo   Try opening manually: http://127.0.0.1:%PORT%
-echo   Or contact Saurabh Datta.
-echo ============================================================
-goto :WAIT_FOR_EXIT
+goto :TIMER_LOOP
 
 :: ── Ready ────────────────────────────────────────────────────
 :READY
 echo.
 echo ============================================================
 echo   Dashboard ready in %MINS%m !SECS_FMT!s
-echo   Opening browser now...
-echo   http://127.0.0.1:%PORT%
+echo   Your browser is opening now...
 echo ============================================================
 echo.
 echo   Keep this window open while using the dashboard.
-echo   Press any key to stop the dashboard and close.
+echo   Press any key when finished to close.
 echo ============================================================
-
-start http://127.0.0.1:%PORT%
 
 :: ── Wait for user to close ───────────────────────────────────
 :WAIT_FOR_EXIT
